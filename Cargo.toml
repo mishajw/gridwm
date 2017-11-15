@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Misha Wagner <mishajw@gmail.com>"]
 
 [dependencies]
-sfml = "0.14.0"
+clap = "2"
 regex = "0.2.2"
+sfml = "0.14.0"
 
