@@ -5,6 +5,7 @@ authors = ["Misha Wagner <mishajw@gmail.com>"]
 
 [dependencies]
 clap = "2"
+libc = "0.2.33"
 regex = "0.2.2"
 sfml = "0.14.0"
 

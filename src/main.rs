@@ -16,6 +16,6 @@ fn main() {
         .value_of("fifo_path")
         .unwrap_or("/tmp/gridwm_fifo");
 
-    fifo_reader::read_loop(fifo_path);
+    fifo_reader::read_loop(std::path::Path::new(fifo_path));
 }
 
