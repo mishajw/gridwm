@@ -1,5 +1,7 @@
 extern crate clap;
 
+mod base_wm;
+mod bsp_wm;
 mod external_commands;
 mod fifo_reader;
 
@@ -16,6 +18,7 @@ fn main() {
         .value_of("fifo_path")
         .unwrap_or("/tmp/gridwm_fifo");
 
+    let wm = bsp_wm::BspWm::new();
     fifo_reader::read_loop(std::path::Path::new(fifo_path));
 }
 
