@@ -8,7 +8,11 @@ use std::path::Path;
 
 use external_commands::ExternalCommand;
 
-pub fn read_loop(fifo_path: &Path) {
+pub fn run(fifo_path: &Path) {
+    read_loop(fifo_path);
+}
+
+fn read_loop(fifo_path: &Path) {
     if !fifo_path.exists() {
         mkfifo(fifo_path);
     }
