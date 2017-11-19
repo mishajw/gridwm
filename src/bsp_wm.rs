@@ -31,7 +31,7 @@ impl BspWm {
 }
 
 impl BaseWm for BspWm {
-    fn handle(command: &ExternalCommand) -> Result<(), &BaseWmError> {
+    fn handle(&self, command: &ExternalCommand) -> Result<(), &BaseWmError> {
         Err(&BspWmError::ExecError)
     }
 }

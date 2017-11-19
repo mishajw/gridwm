@@ -7,12 +7,13 @@ use std::io::BufReader;
 use std::path::Path;
 
 use external_commands::ExternalCommand;
+use base_wm::BaseWm;
 
-pub fn run(fifo_path: &Path) {
-    read_loop(fifo_path);
+pub fn run(fifo_path: &Path, wm: &BaseWm) {
+    read_loop(fifo_path, wm);
 }
 
-fn read_loop(fifo_path: &Path) {
+fn read_loop(fifo_path: &Path, wm: &BaseWm) {
     if !fifo_path.exists() {
         mkfifo(fifo_path);
     }
@@ -21,9 +22,12 @@ fn read_loop(fifo_path: &Path) {
     let reader = BufReader::new(&file);
 
     for line in reader.lines().filter_map(|r| r.ok()) {
-        let command = ExternalCommand::from(&line);
-        
-        println!("{:?}", command)
+        match ExternalCommand::from(&line) {
+            Some(command) =>
+                wm.handle(&command)
+                    .unwrap_or_else(|e| println!("Couldn't handle command due to error: {}", e)),
+            None => println!("Unrecognized command {}", line),
+        };
     }
 }
 

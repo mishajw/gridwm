@@ -19,6 +19,6 @@ fn main() {
         .unwrap_or("/tmp/gridwm_fifo");
 
     let wm = bsp_wm::BspWm::new();
-    command_handler::run(std::path::Path::new(fifo_path));
+    command_handler::run(std::path::Path::new(fifo_path), &wm);
 }
 

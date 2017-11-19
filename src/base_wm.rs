@@ -4,6 +4,6 @@ use std::error::Error;
 pub trait BaseWmError : Error {}
 
 pub trait BaseWm {
-    fn handle(command: &ExternalCommand) -> Result<(), &BaseWmError>;
+    fn handle(&self, command: &ExternalCommand) -> Result<(), &BaseWmError>;
 }
 
