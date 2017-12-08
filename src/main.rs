@@ -1,9 +1,14 @@
 extern crate clap;
+#[macro_use]
+extern crate error_chain;
 
 mod base_wm;
 mod bsp_wm;
-mod external_commands;
 mod command_handler;
+mod error;
+mod external_commands;
+mod workspace;
+mod workspace_vector;
 
 fn main() {
     let matches = clap::App::new("gridwm")

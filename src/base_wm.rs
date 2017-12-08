@@ -1,9 +1,7 @@
 use external_commands::ExternalCommand;
-use std::error::Error;
-
-pub trait BaseWmError : Error {}
+use error;
 
 pub trait BaseWm {
-    fn handle(&self, command: &ExternalCommand) -> Result<(), &BaseWmError>;
+    fn handle(&self, command: &ExternalCommand) -> error::Result<()>;
 }
 
