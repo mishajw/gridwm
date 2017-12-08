@@ -1,5 +1,7 @@
 extern crate regex;
 
+use workspace_vector::WorkspaceVector;
+
 #[derive(Debug)]
 pub enum Direction {
     Left,
@@ -16,6 +18,15 @@ impl Direction {
             "up" => Some(Direction::Up),
             "down" => Some(Direction::Down),
             _ => None
+        }
+    }
+
+    pub fn to_vector(&self) -> WorkspaceVector {
+        match *self {
+            Direction::Left => WorkspaceVector::new(-1, 0),
+            Direction::Right => WorkspaceVector::new(1, 0),
+            Direction::Up => WorkspaceVector::new(0, -1),
+            Direction::Down => WorkspaceVector::new(0, 1),
         }
     }
 }

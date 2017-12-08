@@ -1,3 +1,5 @@
+use std::ops;
+
 use error::*;
 
 #[derive(Debug)]
@@ -13,7 +15,7 @@ impl WorkspaceVector {
 
     pub fn from_str(s: &str) -> Result<WorkspaceVector> {
         let num_strs: Vec<&str> = s.split("_").collect();
-        
+
         if num_strs.len() != 2 {
             return Err(ErrorKind::ParseError("Couldn't parse into WorkspaceVector".into()).into())
         }
@@ -29,6 +31,20 @@ impl WorkspaceVector {
 
     pub fn to_str(&self) -> String {
         format!("{}_{}", self.x, self.y)
+    }
+}
+
+impl PartialEq for WorkspaceVector {
+    fn eq (&self, other: &WorkspaceVector) -> bool {
+        self.x == other.x && self.y == other.y
+    }
+}
+
+impl ops::Add<WorkspaceVector> for WorkspaceVector {
+    type Output = WorkspaceVector;
+
+    fn add(self, other: WorkspaceVector) -> WorkspaceVector {
+        WorkspaceVector::new(self.x + other.x, self.y + other.y)
     }
 }
 
