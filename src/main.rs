@@ -2,6 +2,9 @@ extern crate clap;
 #[macro_use]
 extern crate error_chain;
 
+use error_chain::ChainedError;
+use std::process;
+
 mod base_wm;
 mod bsp_wm;
 mod command_handler;
@@ -24,6 +27,9 @@ fn main() {
         .unwrap_or("/tmp/gridwm_fifo");
 
     let wm = bsp_wm::BspWm::new();
-    command_handler::run(std::path::Path::new(fifo_path), &wm);
+    if let Err(e) = command_handler::run(std::path::Path::new(fifo_path), &wm) {
+        println!("{}", e.display_chain().to_string());
+        process::exit(1);
+    }
 }
 
