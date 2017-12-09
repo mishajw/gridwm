@@ -11,14 +11,16 @@ use error::*;
 use external_commands::ExternalCommand;
 
 pub fn run(fifo_path: &Path, wm: &BaseWm) -> Result<()> {
-    read_loop(fifo_path, wm)
-}
-
-fn read_loop(fifo_path: &Path, wm: &BaseWm) -> Result<()> {
     if !fifo_path.exists() {
         mkfifo(fifo_path);
     }
 
+    loop {
+        read_loop(fifo_path, wm)?
+    }
+}
+
+fn read_loop(fifo_path: &Path, wm: &BaseWm) -> Result<()> {
     let file = File::open(fifo_path).expect("File not found");
     let reader = BufReader::new(&file);
 
