@@ -1,6 +1,7 @@
+use error_chain::ChainedError;
+use std::io::Read;
 use std::process::{Command, Stdio};
 use std::str::from_utf8;
-use std::io::Read;
 
 use error::*;
 use base_wm::BaseWm;
@@ -54,9 +55,10 @@ impl BspWm {
                 continue
             } else {
                 // Otherwise, must be a workspace
-                if let Ok(workspace) = BspWm::parse_bspc_workspace_str(piece) {
-                    workspaces.push(workspace);
-                }
+                match BspWm::parse_bspc_workspace_str(piece) {
+                    Ok(workspace) => workspaces.push(workspace),
+                    Err(e) => println!("{}", e.display_chain().to_string()),
+                };
             }
 
         }
