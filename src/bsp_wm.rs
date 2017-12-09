@@ -74,7 +74,7 @@ impl BspWm {
             .collect();
 
         if matching_workspaces.len() != 1 {
-            unimplemented!()
+            self.call_bspc(vec!["monitor", "--add-desktops", &position.to_str()])?;
         }
 
         self.call_bspc(vec!["desktop" ,"--focus", &position.to_str()])?;
