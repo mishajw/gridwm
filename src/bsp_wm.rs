@@ -67,6 +67,26 @@ impl BspWm {
     }
 
     pub fn go_to_position(&self, position: &WorkspaceVector) -> Result<()> {
+        self.guarentee_exists(position)?;
+        self.call_bspc(vec!["desktop" ,"--focus", &position.to_str()])
+    }
+
+    pub fn swap_workspaces(
+            &self, position1: &WorkspaceVector, position2: &WorkspaceVector) -> Result<()> {
+        self.guarentee_exists(position1)?;
+        self.guarentee_exists(position2)?;
+
+        let name1: &str = &position1.to_str();
+        let name2: &str = &position2.to_str();
+        let name1_tmp: &str = &format!("{}_tmp", &name1);
+
+        self.call_bspc(vec!["desktop", name1, "--rename", name1_tmp])?;
+        self.call_bspc(vec!["desktop", name2, "--rename", name1])?;
+        self.call_bspc(vec!["desktop", name1_tmp, "--rename", name2])?;
+        Ok(())
+    }
+
+    fn guarentee_exists(&self, position: &WorkspaceVector) -> Result<()> {
         let workspaces = self.get_workspaces()?;
         let matching_workspaces: Vec<Workspace> = workspaces
             .into_iter()
@@ -76,8 +96,6 @@ impl BspWm {
         if matching_workspaces.len() != 1 {
             self.call_bspc(vec!["monitor", "--add-desktops", &position.to_str()])?;
         }
-
-        self.call_bspc(vec!["desktop" ,"--focus", &position.to_str()])?;
 
         Ok(())
     }
@@ -121,14 +139,16 @@ impl BaseWm for BspWm {
         match command {
             &ExternalCommand::Go(ref direction) => {
                 let focused = self.get_focused_window()?;
-                let new_position = focused.position + direction.to_vector();
-                self.go_to_position(&new_position)?
+                let new_position = &focused.position + &direction.to_vector();
+                self.go_to_position(&new_position)
             }
-            &ExternalCommand::MoveWorkspace(ref direction) => unimplemented!(),
+            &ExternalCommand::MoveWorkspace(ref direction) => {
+                let focused_position = self.get_focused_window().map(|w| w.position)?;
+                let new_position = &focused_position + &direction.to_vector();
+                self.swap_workspaces(&focused_position, &new_position)
+            }
             &ExternalCommand::MoveWindow(ref direction) => unimplemented!(),
         }
-
-        Ok(())
     }
 }
 

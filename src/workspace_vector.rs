@@ -66,10 +66,10 @@ impl PartialEq for WorkspaceVector {
     }
 }
 
-impl ops::Add<WorkspaceVector> for WorkspaceVector {
+impl<'a, 'b> ops::Add<&'b WorkspaceVector> for &'a WorkspaceVector {
     type Output = WorkspaceVector;
 
-    fn add(self, other: WorkspaceVector) -> WorkspaceVector {
+    fn add(self, other: &WorkspaceVector) -> WorkspaceVector {
         WorkspaceVector::new(self.x + other.x, self.y + other.y)
     }
 }
