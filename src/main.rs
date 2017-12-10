@@ -10,6 +10,7 @@ mod bsp_wm;
 mod command_handler;
 mod error;
 mod external_commands;
+mod named_workspace_wm;
 mod workspace;
 mod workspace_vector;
 

@@ -4,8 +4,7 @@ use std::process::{Command, Stdio};
 use std::str::from_utf8;
 
 use error::*;
-use base_wm::BaseWm;
-use external_commands::ExternalCommand;
+use named_workspace_wm::NamedWorkspaceWm;
 use workspace::{Workspace, Mode};
 use workspace_vector::{WorkspaceVector};
 
@@ -16,17 +15,42 @@ impl BspWm {
         BspWm {}
     }
 
-    fn get_focused_window(&self) -> Result<Workspace> {
-        for workspace in self.get_workspaces()? {
-            if workspace.is_focused {
-                return Ok(workspace)
-            }
-        }
+    fn parse_bspc_workspace_str(s: &str) -> Result<Workspace> {
+        let workspace_flag: char = s.chars().next()
+            .chain_err(|| "String is too short")?;
 
-        Err(ErrorKind::LogicError("No window flagged as focused".into()).into())
+        let is_focused = !workspace_flag.is_lowercase();
+        let mode = match workspace_flag.to_lowercase().next() {
+            Some('o') => Mode::Occupied,
+            Some('f') => Mode::Unoccupied,
+            Some('u') => Mode::Urgent,
+            _ => return Err(
+                ErrorKind::LogicError(
+                    "Unrecognized workspace flag from bspc".to_string()).into())
+        };
+
+        let workspace_name = &s[1..];
+        WorkspaceVector::from_str(workspace_name)
+            .chain_err(|| "Couldn't parse workspace name to vector")
+            .map(|wv| Workspace::new(wv, is_focused, mode))
     }
 
-    pub fn get_workspaces(&self) -> Result<Vec<Workspace>> {
+    fn call_bspc(&self, arguments: Vec<&str>) -> Result<()> {
+        let status = Command::new("bspc")
+            .args(arguments)
+            .status()
+            .chain_err(|| "Couldn't get result of call")?;
+
+        if status.success() {
+            Ok(())
+        } else {
+            Err(ErrorKind::LogicError("BSPC call returned error code".into()).into())
+        }
+    }
+}
+
+impl NamedWorkspaceWm for BspWm {
+    fn get_workspaces(&self) -> Result<Vec<Workspace>> {
         // Start the command
         let command = Command::new("bspc").arg("subscribe")
             .stdout(Stdio::piped())
@@ -66,12 +90,12 @@ impl BspWm {
         return Ok(workspaces)
     }
 
-    pub fn go_to_position(&self, position: &WorkspaceVector) -> Result<()> {
+    fn go_to_position(&self, position: &WorkspaceVector) -> Result<()> {
         self.guarentee_exists(position)?;
         self.call_bspc(vec!["desktop" ,"--focus", &position.to_str()])
     }
 
-    pub fn swap_workspaces(
+    fn swap_workspaces(
             &self, position1: &WorkspaceVector, position2: &WorkspaceVector) -> Result<()> {
         self.guarentee_exists(position1)?;
         self.guarentee_exists(position2)?;
@@ -86,7 +110,7 @@ impl BspWm {
         Ok(())
     }
 
-    pub fn move_focused_window(&self, new_position: &WorkspaceVector) -> Result<()> {
+    fn move_focused_window(&self, new_position: &WorkspaceVector) -> Result<()> {
         let new_position_str: &str = &new_position.to_str();
 
         self.guarentee_exists(new_position)?;
@@ -106,61 +130,6 @@ impl BspWm {
         }
 
         Ok(())
-    }
-
-    fn parse_bspc_workspace_str(s: &str) -> Result<Workspace> {
-        let workspace_flag: char = s.chars().next()
-            .chain_err(|| "String is too short")?;
-
-        let is_focused = !workspace_flag.is_lowercase();
-        let mode = match workspace_flag.to_lowercase().next() {
-            Some('o') => Mode::Occupied,
-            Some('f') => Mode::Unoccupied,
-            Some('u') => Mode::Urgent,
-            _ => return Err(
-                ErrorKind::LogicError(
-                    "Unrecognized workspace flag from bspc".to_string()).into())
-        };
-
-        let workspace_name = &s[1..];
-        WorkspaceVector::from_str(workspace_name)
-            .chain_err(|| "Couldn't parse workspace name to vector")
-            .map(|wv| Workspace::new(wv, is_focused, mode))
-    }
-
-    fn call_bspc(&self, arguments: Vec<&str>) -> Result<()> {
-        let status = Command::new("bspc")
-            .args(arguments)
-            .status()
-            .chain_err(|| "Couldn't get result of call")?;
-
-        if status.success() {
-            Ok(())
-        } else {
-            Err(ErrorKind::LogicError("BSPC call returned error code".into()).into())
-        }
-    }
-}
-
-impl BaseWm for BspWm {
-    fn handle(&self, command: &ExternalCommand) -> Result<()> {
-        match command {
-            &ExternalCommand::Go(ref direction) => {
-                let focused = self.get_focused_window()?;
-                let new_position = &focused.position + &direction.to_vector();
-                self.go_to_position(&new_position)
-            }
-            &ExternalCommand::MoveWorkspace(ref direction) => {
-                let focused_position = self.get_focused_window().map(|w| w.position)?;
-                let new_position = &focused_position + &direction.to_vector();
-                self.swap_workspaces(&focused_position, &new_position)
-            }
-            &ExternalCommand::MoveWindow(ref direction) => {
-                let focused_position = self.get_focused_window().map(|w| w.position)?;
-                let new_position = &focused_position + &direction.to_vector();
-                self.move_focused_window(&new_position)
-            }
-        }
     }
 }
 
