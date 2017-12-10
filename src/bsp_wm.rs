@@ -86,6 +86,14 @@ impl BspWm {
         Ok(())
     }
 
+    pub fn move_focused_window(&self, new_position: &WorkspaceVector) -> Result<()> {
+        let new_position_str: &str = &new_position.to_str();
+
+        self.guarentee_exists(new_position)?;
+        self.call_bspc(vec!["node", "--to-desktop", new_position_str])?;
+        self.call_bspc(vec!["desktop", "--focus", new_position_str])
+    }
+
     fn guarentee_exists(&self, position: &WorkspaceVector) -> Result<()> {
         let workspaces = self.get_workspaces()?;
         let matching_workspaces: Vec<Workspace> = workspaces
@@ -147,7 +155,11 @@ impl BaseWm for BspWm {
                 let new_position = &focused_position + &direction.to_vector();
                 self.swap_workspaces(&focused_position, &new_position)
             }
-            &ExternalCommand::MoveWindow(ref direction) => unimplemented!(),
+            &ExternalCommand::MoveWindow(ref direction) => {
+                let focused_position = self.get_focused_window().map(|w| w.position)?;
+                let new_position = &focused_position + &direction.to_vector();
+                self.move_focused_window(&new_position)
+            }
         }
     }
 }
