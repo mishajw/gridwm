@@ -1,13 +1,13 @@
 use workspace_vector::WorkspaceVector;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Mode {
     Unoccupied,
     Occupied,
     Urgent
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Workspace {
     pub position: WorkspaceVector,
     pub is_focused: bool,

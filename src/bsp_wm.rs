@@ -1,21 +1,90 @@
 use error_chain::ChainedError;
-use std::io::Read;
+use std::io::BufRead;
+use std::io::{Read, BufReader};
+use std::ops::Deref;
 use std::process::{Command, Stdio};
 use std::str::from_utf8;
+use std::sync::{Arc, Mutex, MutexGuard};
+use std::thread;
+
 
 use error::*;
 use named_workspace_wm::NamedWorkspaceWm;
 use workspace::{Workspace, Mode};
 use workspace_vector::{WorkspaceVector};
 
-pub struct BspWm {}
+type ThreadHandle = Option<thread::JoinHandle<()>>;
+
+pub struct BspWm {
+    bspc_subscribe_thread: ThreadHandle,
+    workspaces: Arc<Mutex<Vec<Workspace>>>,
+}
 
 impl BspWm {
     pub fn new() -> BspWm {
-        BspWm {}
+        let mut bsp_wm = BspWm {
+            bspc_subscribe_thread: None,
+            workspaces: Arc::new(Mutex::new(vec![])),
+        };
+
+        let cloned_workspaces = bsp_wm.workspaces.clone();
+        bsp_wm.bspc_subscribe_thread = Some(thread::spawn(
+                || BspWm::start_bspc_subscribe_handler(cloned_workspaces)));
+
+        bsp_wm
     }
 
-    fn parse_bspc_workspace_str(s: &str) -> Result<Workspace> {
+    fn start_bspc_subscribe_handler(workspaces: Arc<Mutex<Vec<Workspace>>>) {
+        match BspWm::bspc_subscribe_handler(workspaces) {
+            Ok(_) => println!("BSPC subscribe thread exitted with no error"),
+            Err(e) => println!(
+                "BSPC subscribe thread exitted with error:\n{}",
+                e.display_chain().to_string()),
+        }
+    }
+
+    fn bspc_subscribe_handler(workspaces: Arc<Mutex<Vec<Workspace>>>) -> Result<()> {
+        // Start the command
+        let command = Command::new("bspc").arg("subscribe")
+            .stdout(Stdio::piped())
+            .spawn()
+            .chain_err(|| "Couldn't run bspc subscribe")?;
+
+        // Read a line from the command
+        let reader = BufReader::new(
+            command.stdout.chain_err(|| "Couldn't get stdout from process")?);
+
+        for line in reader.lines().filter_map(|r| r.ok()) {
+            let workspace_pieces: Vec<&str> = line.split(":").collect();
+            let mut current_monitor_name: Option<&str> = None;
+            let mut new_workspaces: Vec<Workspace> = Vec::new();
+
+            for piece in workspace_pieces {
+                if piece.starts_with("WM") {
+                    current_monitor_name = Some(&piece[2..]);
+                    continue
+                } else if piece.starts_with("L") || piece.starts_with("T") || piece.starts_with("G") {
+                    // Layout, tiled mode, or flag of the monitor, we don't care
+                    continue
+                } else {
+                    // Otherwise, must be a workspace
+                    match BspWm::parse_bspc_workspace_str(piece) {
+                        Ok(Some(workspace)) => new_workspaces.push(workspace),
+                        Ok(None) => (),
+                        Err(e) => println!("{}", e.display_chain().to_string()),
+                    };
+                }
+            }
+
+            let mut workspaces_locked = workspaces.lock().unwrap();
+            workspaces_locked.clear();
+            workspaces_locked.append(&mut new_workspaces);
+        }
+
+        return Ok(())
+    }
+
+    fn parse_bspc_workspace_str(s: &str) -> Result<Option<Workspace>> {
         let workspace_flag: char = s.chars().next()
             .chain_err(|| "String is too short")?;
 
@@ -30,9 +99,13 @@ impl BspWm {
         };
 
         let workspace_name = &s[1..];
-        WorkspaceVector::from_str(workspace_name)
-            .chain_err(|| "Couldn't parse workspace name to vector")
-            .map(|wv| Workspace::new(wv, is_focused, mode))
+
+        match WorkspaceVector::from_str(workspace_name)
+                .chain_err(|| "Couldn't parse workspace name to vector") {
+            Ok(Some(wv)) => Ok(Some(Workspace::new(wv, is_focused, mode))),
+            Ok(None) => Ok(None),
+            Err(e) => Err(e),
+        }
     }
 
     fn call_bspc(&self, arguments: Vec<&str>) -> Result<()> {
@@ -51,43 +124,11 @@ impl BspWm {
 
 impl NamedWorkspaceWm for BspWm {
     fn get_workspaces(&self) -> Result<Vec<Workspace>> {
-        // Start the command
-        let command = Command::new("bspc").arg("subscribe")
-            .stdout(Stdio::piped())
-            .spawn()
-            .chain_err(|| "Couldn't run bspc subscribe")?;
-
-        // Read a line from the command
-        let mut buffer = [0; 512];
-        let read_size: usize = command.stdout
-            .chain_err(|| "Couldn't get stdout from process")
-            .and_then(|mut stdout| stdout.read(&mut buffer)
-                    .chain_err(|| "Couldn't read from process"))?;
-        let workspaces_str: &str = from_utf8(&buffer[..read_size])
-            .chain_err(|| "Couldn't get string from UTF-8".to_string())?;
-
-        let workspace_pieces: Vec<&str> = workspaces_str.split(":").collect();
-        let mut current_monitor_name: Option<&str> = None;
-        let mut workspaces: Vec<Workspace> = Vec::new();
-
-        for piece in workspace_pieces {
-            if piece.starts_with("WM") {
-                current_monitor_name = Some(&piece[2..]);
-                continue
-            } else if piece.starts_with("L") || piece.starts_with("T") || piece.starts_with("G") {
-                // Layout, tiled mode, or flag of the monitor, we don't care
-                continue
-            } else {
-                // Otherwise, must be a workspace
-                match BspWm::parse_bspc_workspace_str(piece) {
-                    Ok(workspace) => workspaces.push(workspace),
-                    Err(e) => println!("{}", e.display_chain().to_string()),
-                };
-            }
-
+        match self.workspaces.lock() {
+            Ok(ws) => Ok(ws.clone()),
+            Err(e) => Err(ErrorKind::RuntimeError(
+                    "Couldn't get lock on workspaces".into()).into()),
         }
-
-        return Ok(workspaces)
     }
 
     fn go_to_position(&self, position: &WorkspaceVector) -> Result<()> {

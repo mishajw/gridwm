@@ -2,7 +2,7 @@ use std::ops;
 
 use error::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WorkspaceVector {
     pub x: i32,
     pub y: i32
@@ -13,7 +13,11 @@ impl WorkspaceVector {
         return WorkspaceVector {x, y}
     }
 
-    pub fn from_str(s: &str) -> Result<WorkspaceVector> {
+    pub fn from_str(s: &str) -> Result<Option<WorkspaceVector>> {
+        if s.ends_with("_tmp") {
+            return Ok(None)
+        }
+
         let num_strs: Vec<&str> = s.split("_").collect();
 
         if num_strs.len() != 2 {
@@ -27,7 +31,7 @@ impl WorkspaceVector {
         let x: i32 = WorkspaceVector::str_to_int(x_str)?;
         let y: i32 = WorkspaceVector::str_to_int(y_str)?;
 
-        Ok(WorkspaceVector::new(x, y))
+        Ok(Some(WorkspaceVector::new(x, y)))
     }
 
     pub fn to_str(&self) -> String {

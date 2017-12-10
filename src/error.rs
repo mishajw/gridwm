@@ -1,4 +1,5 @@
 use std::io;
+use std::sync;
 
 error_chain! {
     foreign_links {
@@ -6,6 +7,10 @@ error_chain! {
     }
 
     errors {
+        RuntimeError(s: String) {
+            display("Runtime error: {}", s)
+        }
+
         LogicError(s: String) {
             display("Logic error: {}", s)
         }
